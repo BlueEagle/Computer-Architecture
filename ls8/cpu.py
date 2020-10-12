@@ -2,12 +2,19 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b11000010
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.reg[7] = 0xF4
+        self.pc = 0
+        self.halted = False
 
     def load(self):
         """Load a program into memory."""
@@ -30,6 +37,11 @@ class CPU:
             self.ram[address] = instruction
             address += 1
 
+    def ram_read(self, address):
+        return self.ram[address]
+
+    def ram_write(self, value, address):
+        self.ram[address] = value
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -62,4 +74,27 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        while not self.halted:
+            # Store the memory address stored in reg[PC] into IR, a local variable
+            ir = self.ram_read(self.pc)
+
+            # Store pc+1 and pc+2 into operand_a, and operand_b
+            operand_a, operand_b = self.ram_read(self.pc+1), self.ram_read(self.pc+2)
+
+            # perform actions for the specific instruction, if/elif/else
+            if ir == LDI:
+                self.reg[operand_a] = operand_b
+                print(f"LDI {operand_a} {operand_b}")
+            elif ir == HLT:
+                break
+            else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
+
+            # point PC to the correct next instruction
+            if ir & 0b10000000:
+                self.pc += 3
+            elif ir & 0b01000000:
+                self.pc += 2
+            else: self.pc += 1
+            # the opcode should indicate how many bytes an instruction uses. This is in the spec.
+
+            # Decode the instruction at PC
