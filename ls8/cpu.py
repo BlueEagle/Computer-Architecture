@@ -3,7 +3,8 @@
 import sys
 
 HLT = 0b00000001
-LDI = 0b11000010
+LDI = 0b10000010
+PRN = 0b01000111
 
 class CPU:
     """Main CPU class."""
@@ -82,9 +83,10 @@ class CPU:
             operand_a, operand_b = self.ram_read(self.pc+1), self.ram_read(self.pc+2)
 
             # perform actions for the specific instruction, if/elif/else
-            if ir == LDI:
+            if ir == PRN:
+                print(self.reg[operand_a])
+            elif ir == LDI:
                 self.reg[operand_a] = operand_b
-                print(f"LDI {operand_a} {operand_b}")
             elif ir == HLT:
                 break
             else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
