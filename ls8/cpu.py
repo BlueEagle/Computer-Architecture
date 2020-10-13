@@ -17,26 +17,42 @@ class CPU:
         self.pc = 0
         self.halted = False
 
-    def load(self):
+    def load(self, filename='examples/print8.ls8'):
         """Load a program into memory."""
 
         address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
+        try:
+            with open(filename) as f:
+                for line in f:
+                    line = line.strip()
+                    if line == '' or line[0] =='#':
+                        continue
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    try:
+                        string_value = line.split('#')[0] # the first item. The data.
+                        value = int(string_value, 2)
+
+                    except ValueError:
+                        print(f"Not a number: {string_value}")
+                        sys.exit(1)
+
+                    self.ram_write(value, address)
+                    address += 1
+        except FileNotFoundError:
+            print(f"File not found: {filename}")
+            sys.exit(2)
 
     def ram_read(self, address):
         return self.ram[address]
@@ -79,6 +95,7 @@ class CPU:
             # Store the memory address stored in reg[PC] into IR, a local variable
             ir = self.ram_read(self.pc)
 
+
             # Store pc+1 and pc+2 into operand_a, and operand_b
             operand_a, operand_b = self.ram_read(self.pc+1), self.ram_read(self.pc+2)
 
@@ -99,4 +116,3 @@ class CPU:
             else: self.pc += 1
             # the opcode should indicate how many bytes an instruction uses. This is in the spec.
 
-            # Decode the instruction at PC
