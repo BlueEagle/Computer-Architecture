@@ -5,6 +5,7 @@ import sys
 HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
+MUL = 0b10100010
 
 class CPU:
     """Main CPU class."""
@@ -16,23 +17,16 @@ class CPU:
         self.reg[7] = 0xF4
         self.pc = 0
         self.halted = False
+        
+        self.bt = {
+            MUL: self.op_MUL
+        }
 
     def load(self, filename='examples/print8.ls8'):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010, # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111, # PRN R0
-        #     0b00000000,
-        #     0b00000001, # HLT
-        # ]
         try:
             with open(filename) as f:
                 for line in f:
@@ -60,14 +54,21 @@ class CPU:
     def ram_write(self, value, address):
         self.ram[address] = value
 
+
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        if op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
+
+    def op_MUL(self, a, b):
+        print(f"Multiplying: {a} {b}")
+        self.alu("MUL", a, b)
 
     def trace(self):
         """
@@ -106,6 +107,9 @@ class CPU:
                 self.reg[operand_a] = operand_b
             elif ir == HLT:
                 break
+            elif ir & 0b00100000: # if ALU opcode, send to bt
+                # self.alu(ir, operand_a, operand_b)
+                self.bt[ir](operand_a, operand_b)
             else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
 
             # point PC to the correct next instruction
