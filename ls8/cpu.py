@@ -2,11 +2,17 @@
 
 import sys
 
+# registers
+SP = 7
+
+# opcodes
 HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
 MUL = 0b10100010
 ADD = 0b10100000
+PUSH = 0b01000101
+POP = 0b01000110
 
 class CPU:
     """Main CPU class."""
@@ -111,6 +117,21 @@ class CPU:
                 self.reg[operand_a] = operand_b
             elif ir == HLT:
                 break
+            elif ir == PUSH:
+                self.reg[SP] -= 1
+
+                value = self.reg[operand_a]
+
+                stack_addr = self.reg[SP]
+                self.ram_write(value, stack_addr)
+            elif ir == POP:
+                stack_addr = self.reg[SP]
+                value = self.ram_read(stack_addr)
+
+                self.reg[operand_a] = value
+
+                self.reg[SP] += 1
+
             elif ir & 0x20: # if ALU opcode, send to bt
                 if ir in self.bt:
                     self.bt[ir](operand_a, operand_b)
@@ -119,9 +140,9 @@ class CPU:
             else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
 
             # point PC to the correct next instruction
-            if ir & 0b10000000:
+            if ir & 0x80:
                 self.pc += 3
-            elif ir & 0b01000000:
+            elif ir & 0x40:
                 self.pc += 2
             else: self.pc += 1
             # the opcode should indicate how many bytes an instruction uses. This is in the spec.
