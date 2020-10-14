@@ -6,6 +6,7 @@ HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
 MUL = 0b10100010
+ADD = 0b10100000
 
 class CPU:
     """Main CPU class."""
@@ -19,7 +20,8 @@ class CPU:
         self.halted = False
         
         self.bt = {
-            MUL: self.op_MUL
+            MUL: self.op_MUL,
+            ADD: self.op_ADD
         }
 
     def load(self, filename='examples/print8.ls8'):
@@ -67,8 +69,10 @@ class CPU:
             raise Exception("Unsupported ALU operation")
 
     def op_MUL(self, a, b):
-        print(f"Multiplying: {a} {b}")
         self.alu("MUL", a, b)
+    
+    def op_ADD(self, a, b):
+        self.alu("ADD", a, b)
 
     def trace(self):
         """
@@ -107,9 +111,11 @@ class CPU:
                 self.reg[operand_a] = operand_b
             elif ir == HLT:
                 break
-            elif ir & 0b00100000: # if ALU opcode, send to bt
-                # self.alu(ir, operand_a, operand_b)
-                self.bt[ir](operand_a, operand_b)
+            elif ir & 0x20: # if ALU opcode, send to bt
+                if ir in self.bt:
+                    self.bt[ir](operand_a, operand_b)
+                else:
+                    print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
             else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
 
             # point PC to the correct next instruction
