@@ -13,6 +13,9 @@ MUL = 0b10100010
 ADD = 0b10100000
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+
 
 class CPU:
     """Main CPU class."""
@@ -68,17 +71,17 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        if op == "MUL":
+        elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
 
-    def op_MUL(self, a, b):
-        self.alu("MUL", a, b)
-    
     def op_ADD(self, a, b):
         self.alu("ADD", a, b)
+
+    def op_MUL(self, a, b):
+        self.alu("MUL", a, b)
 
     def trace(self):
         """
@@ -100,6 +103,44 @@ class CPU:
 
         print()
 
+    def prn(self, op_a):
+        print(self.reg[op_a])
+
+    def ldi(self, op_a, op_b):
+        self.reg[op_a] = op_b
+
+    def push(self, op_a):
+        self.reg[SP] -= 1
+
+        value = self.reg[op_a]
+
+        stack_addr = self.reg[SP]
+        self.ram_write(value, stack_addr)
+
+    def pop(self, op_a):
+        stack_addr = self.reg[SP]
+        value = self.ram_read(stack_addr)
+
+        self.reg[op_a] = value
+
+        self.reg[SP] += 1
+
+    def call(self, op_a):
+        next_addr = self.pc + 2 # the next address after the call. This should be the new PC.
+        # print(next_addr) # Correct
+        self.reg[SP] -= 1
+        stack_addr = self.reg[SP]
+        self.ram_write(next_addr, stack_addr)
+
+        self.pc = self.reg[op_a]
+
+    def ret(self):
+        stack_addr = self.reg[SP]
+        self.pc = self.ram_read(stack_addr) # the last value off the stack
+
+        self.reg[SP] += 1
+
+
     def run(self):
         """Run the CPU."""
         while not self.halted:
@@ -112,26 +153,19 @@ class CPU:
 
             # perform actions for the specific instruction, if/elif/else
             if ir == PRN:
-                print(self.reg[operand_a])
+                self.prn(operand_a)
             elif ir == LDI:
-                self.reg[operand_a] = operand_b
+                self.ldi(operand_a,operand_b)
             elif ir == HLT:
                 break
             elif ir == PUSH:
-                self.reg[SP] -= 1
-
-                value = self.reg[operand_a]
-
-                stack_addr = self.reg[SP]
-                self.ram_write(value, stack_addr)
+                self.push(operand_a)
             elif ir == POP:
-                stack_addr = self.reg[SP]
-                value = self.ram_read(stack_addr)
-
-                self.reg[operand_a] = value
-
-                self.reg[SP] += 1
-
+                self.pop(operand_a)
+            elif ir == CALL:
+                self.call(operand_a)
+            elif ir == RET:
+                self.ret()
             elif ir & 0x20: # if ALU opcode, send to bt
                 if ir in self.bt:
                     self.bt[ir](operand_a, operand_b)
@@ -140,10 +174,11 @@ class CPU:
             else: print(f"No command found for instruction {bin(ir)} at address {bin(self.pc)}")
 
             # point PC to the correct next instruction
-            if ir & 0x80:
-                self.pc += 3
-            elif ir & 0x40:
-                self.pc += 2
-            else: self.pc += 1
+            if not ir & 0x10: # if the PC is not set by the operation
+                if ir & 0x80:
+                    self.pc += 3
+                elif ir & 0x40:
+                    self.pc += 2
+                else: self.pc += 1
             # the opcode should indicate how many bytes an instruction uses. This is in the spec.
 
