@@ -11,10 +11,14 @@ LDI = 0b10000010
 PRN = 0b01000111
 MUL = 0b10100010
 ADD = 0b10100000
+CMP = 0b10100111
 PUSH = 0b01000101
 POP = 0b01000110
 CALL = 0b01010000
 RET = 0b00010001
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 
 class CPU:
@@ -27,10 +31,12 @@ class CPU:
         self.reg[7] = 0xF4
         self.pc = 0
         self.halted = False
+        self.fl = 0b00000000
         
         self.bt = {
             MUL: self.op_MUL,
-            ADD: self.op_ADD
+            ADD: self.op_ADD,
+            CMP: self.op_CMP
         }
 
     def load(self, filename='examples/print8.ls8'):
@@ -73,6 +79,16 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            a = self.reg[reg_a]
+            b = self.reg[reg_b]
+            self.fl = self.fl & 0
+            if a < b:
+                self.fl = self.fl | 0b00000100
+            elif a > b:
+                self.fl = self.fl | 0b00000010
+            elif a == b:
+                self.fl = self.fl | 0b00000001
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -82,6 +98,9 @@ class CPU:
 
     def op_MUL(self, a, b):
         self.alu("MUL", a, b)
+    
+    def op_CMP(self, a, b):
+        self.alu("CMP", a, b)
 
     def trace(self):
         """
@@ -107,6 +126,7 @@ class CPU:
         print(self.reg[op_a])
 
     def ldi(self, op_a, op_b):
+        # print(op_a, op_b)
         self.reg[op_a] = op_b
 
     def push(self, op_a):
@@ -140,6 +160,20 @@ class CPU:
 
         self.reg[SP] += 1
 
+    def jmp(self, op_a):
+        new_addr = self.reg[op_a]
+        self.pc = new_addr
+
+    def jeq(self, op_a):
+        # print("Hello there!")
+        if self.fl & 0b00000001:
+            self.jmp(op_a)
+        else: self.pc += 2
+        
+    def jne(self, op_a):
+        if not self.fl & 1:
+            self.jmp(op_a)
+        else: self.pc += 2
 
     def run(self):
         """Run the CPU."""
@@ -166,6 +200,12 @@ class CPU:
                 self.call(operand_a)
             elif ir == RET:
                 self.ret()
+            elif ir == JMP:
+                self.jmp(operand_a)
+            elif ir == JEQ:
+                self.jeq(operand_a)
+            elif ir == JNE:
+                self.jne(operand_a)
             elif ir & 0x20: # if ALU opcode, send to bt
                 if ir in self.bt:
                     self.bt[ir](operand_a, operand_b)
